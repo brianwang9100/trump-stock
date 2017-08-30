@@ -26,21 +26,21 @@
   {:oauth_token "2680914770-OGO02YNrktlgxzHNjQ0dhpDuKqt33avvBtP9JKQ"
    :oauth_token_secret "HrrwcQoQHmkhN51b7dtFOK4IR6nl8H4psoPLHWb5fj3oT"})
 
-(def url "https://api.twitter.com/1.1/search/tweets.json")
-(def user-params {:q "from@realDonaldTrump" :result_type "popular"})
+(def url "https://api.twitter.com/1.1/statuses/update.json")
+(def user-params {:status (str "testing,  time: " (.getTime (new java.util.Date)))})
 (def credentials (oauth/credentials consumer
                                     (:oauth_token access-token-response)
                                     (:oauth_token_secret access-token-response)
                                     :POST
                                     url
                                     user-params))
+(http/post url {:query-params (merge credentials user-params)})
 
 ;; Post with clj-http...
 ; (http/post "https://api.twitter.com/1.1/statuses/update.json"
 ;            {:query-params (merge credentials user-params)})
 
-; (http/get "https://stream.twitter.com/1.1/statuses/sample.json")
-(http/post url {:query-params (merge credentials user-params)})
+; (http/get "https://api.twitter.com/1.1/statuses/sample.json")
 
 ; (defn nonce []
 ;   (apply str (filter alpha-numeric?
