@@ -42,7 +42,7 @@
 
 (try
   (http/get url {:headers
-                 {:Authorization (oauth-string "OAuth" credentials)}}))
+                 {:Authorization (oauth-string "OAuth" credentials)}}) (catch clojure.lang.ExceptionInfo e (prn "caught" e)))
 
 (defn oauth-string [auth-type credentials]
   (str auth-type " " (reduce #(str %1 " " %2) (map (fn [[k v]] (str (name k) "=" "\"" v "\"")) credentials))))

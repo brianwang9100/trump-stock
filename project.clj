@@ -7,4 +7,5 @@
                  [clj-http "3.7.0"]
                  [twitter-api "1.8.0"]
                  [crypto-random "1.2.0"]
-                 [clj-oauth "1.5.5"]])
+                 [clj-oauth "1.5.5"]
+                 [com.twitter/hbc-core "2.2.0"]])
