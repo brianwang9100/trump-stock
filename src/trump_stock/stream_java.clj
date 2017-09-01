@@ -1,24 +1,15 @@
 (ns trump-stock.stream-java
-  (import java.util.concurrent [BlockingQueue LinkedBlockingQueue]
-          com.twitter.hbc [ClientBuilder]
-          com.twitter.hbc.core [Client Constants]
-          com.twitter.hbc.core.processor [StringDelimitedProcessor]
-          com.twitter.hbc.core.endpoint [StatusesFilterEndpoint]
-          com.twitter.hbc.httpclient.auth [Authenticaiton OAuth1]))
-
-
-    ; BlockingQueue<String> queue = new LinkedBlockingQueue<String>(10000);
-    ; StatusesFilterEndpoint endpoint = new StatusesFilterEndpoint()));
-;;    // add some track terms
-    ; endpoint.trackTerms(Lists.newArrayList("twitterapi", "#yolo"))));
-
-    ; Authentication auth = new OAuth1(consumerKey, consumerSecret, token, secret)));
-;;    // Authentication auth = new BasicAuth(username, password)));
+  (:import (java.util.concurrent LinkedBlockingQueue)
+           (com.twitter.hbc ClientBuilder)
+           (com.twitter.hbc.core Client Constants)
+           (com.twitter.hbc.core.processor StringDelimitedProcessor)
+           (com.twitter.hbc.core.endpoint StatusesFilterEndpoint)
+           (com.twitter.hbc.httpclient.auth Authentication OAuth1)))
 
 (def auth (atom nil))
 (def endpoint (atom nil))
-(def client (atom nil))
 (def queue (atom nil))
+(def client (atom nil))
 
 (def consumer-key "94bPomC4amy5zeYoBw9zL3q2K")
 (def consumer-secret "A9kR74FslUoEBQGzAPVprV9WnCyiXFu8tpKXdmVmdH76sWZDTI")
@@ -34,25 +25,29 @@
   (if @endpoint
     @endpoint
     (reset! endpoint (-> (StatusesFilterEndpoint.)
-                         (.followings (java.util.ArrayList. [25073877]))))))
-
-(defn get-client []
-  (if @client
-    @client
-    (reset! client (-> (Client.)
-                       (.hosts Constants.STREAM_HOST)
-                       (.endpoint endpoint)
-                       (.authentication auth)
-                       (.processor (StringDelimitedProcessor. queue))
-                       (.build)))))
+                         (.followings (java.util.ArrayList. [2680914770]))))))
 
 (defn get-queue []
   (if @queue
     @queue
     (reset! queue (LinkedBlockingQueue. 10000))))
 
+(defn get-client []
+  (if @client
+    @client
+    (reset! client (-> (ClientBuilder.)
+                       (.hosts Constants/STREAM_HOST)
+                       (.endpoint (get-endpoint))
+                       (.authentication (get-auth))
+                       (.processor (StringDelimitedProcessor. (get-queue)))
+                       (.build)))))
+
 ; // Establish a connection
 ; client.connect();
+(defn consumer-messages []
+  (if (not (.isDone (get-client)))
+    (println (.take (get-queue)))))
 
 (defn start-streaming! []
-  (.connect @client))
+  (.connect (get-client))
+  (doall (repeatedly consumer-messages)))
