@@ -26,8 +26,10 @@
   {:oauth_token "2680914770-OGO02YNrktlgxzHNjQ0dhpDuKqt33avvBtP9JKQ"
    :oauth_token_secret "HrrwcQoQHmkhN51b7dtFOK4IR6nl8H4psoPLHWb5fj3oT"})
 
-(def url "https://api.twitter.com/1.1/statuses/update.json")
-(def user-params {:status (str "testing,  time: " (.getTime (new java.util.Date)))})
+(def url "https://api.twitter.com/1.1/statuses/user_timeline.json")
+(def user-params {:screen_name "realDonaldTrump" :count 10})
+; (def url "https://api.twitter.com/1.1/statuses/update.json")
+; (def user-params {:status "lol another status"})
 (def credentials (oauth/credentials consumer
                                     (:oauth_token access-token-response)
                                     (:oauth_token_secret access-token-response)
@@ -36,15 +38,13 @@
                                     user-params))
 (http/post url {:query-params (merge credentials user-params)})
 
-;; Post with clj-http...
-; (http/post "https://api.twitter.com/1.1/statuses/update.json"
-;            {:query-params (merge credentials user-params)})
+; (try
+;   (http/post url {:query-params (merge credentials user-params)})(catch clojure.lang.ExceptionInfo e (prn "caught" e)))
 
-; (http/get "https://api.twitter.com/1.1/statuses/sample.json")
+(try
+  (http/get url {:headers
+                 {:Authorization (oauth-string "OAuth" credentials)}}) (catch clojure.lang.ExceptionInfo e (prn "caught" e)))
 
-; (defn nonce []
-;   (apply str (filter alpha-numeric?
-;                      (crypto.random/base64 32))))
-;
-; (defn alpha-numeric? [x]
-;   (or (Character/isDigit x) (Character/isLetter x)))
+(defn oauth-string [auth-type credentials]
+  (str auth-type " " (reduce #(str %1 " " %2) (map (fn [[k v]] (str (name k) "=" "\"" v "\"")) credentials))))
+                ;  (catch clojure.lang.ExceptionInfo e (prn "caught" e))}))
