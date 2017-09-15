@@ -45,17 +45,18 @@
                        (.processor (StringDelimitedProcessor. (get-queue)))
                        (.build)))))
 
-(defn consumer-messages []
+(defn consume-message []
   (if (not (.isDone (get-client)))
     (-> (get-queue)
         (.take)
-        (parse-string))))
+        (parse-string)
+        (println))))
 
 ; get and start future
 (defn start-consumer-thread! []
   (if @consumer-thread
     @consumer-thread
-    (reset! consumer-thread (future (doall (repeatedly consumer-messages))))))
+    (reset! consumer-thread (future (doall (repeatedly consume-message))))))
 
 (defn stop-consumer-thread! []
   (when @consumer-thread
@@ -72,9 +73,12 @@
   (start-consumer-thread!))
 
 (defn stop-streaming! []
-  (.stop (get-client))
-  (stop-consumer-thread!))
+  (when @client
+    (.stop (get-client)))
+  (stop-consumer-thread!)
+  (reset! client nil)
+  (reset! queue nil))
 
-(defn reconnect! []
-  (.reconnect (get-client))
-  (start-consumer-thread!))
+; (defn reconnect! []
+;   (.reconnect (get-client))
+;   (start-consumer-thread!))
