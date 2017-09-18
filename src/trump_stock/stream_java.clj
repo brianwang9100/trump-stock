@@ -4,14 +4,15 @@
            (com.twitter.hbc.core Client Constants)
            (com.twitter.hbc.core.processor StringDelimitedProcessor)
            (com.twitter.hbc.core.endpoint StatusesFilterEndpoint)
-           (com.twitter.hbc.httpclient.auth Authentication OAuth1)
+           (com.twitter.hbc.httpclient.auth Authentication OAuth1))
 
-  (:require [cheshire.core :refer :all]))]
+  (:require [cheshire.core :refer :all]))
 
 (def auth (atom nil))
 (def endpoint (atom nil))
 (def queue (atom nil))
 (def client (atom nil))
+(def consumer-thread (atom nil)) ; future
 
 (def consumer-key "94bPomC4amy5zeYoBw9zL3q2K")
 (def consumer-secret "A9kR74FslUoEBQGzAPVprV9WnCyiXFu8tpKXdmVmdH76sWZDTI")
@@ -44,20 +45,40 @@
                        (.processor (StringDelimitedProcessor. (get-queue)))
                        (.build)))))
 
-; // Establish a connection
-(defn consumer-messages []
+(defn consume-message []
   (if (not (.isDone (get-client)))
     (-> (get-queue)
         (.take)
-        (parse-string))))
+        (parse-string)
+        (println))))
+
+; get and start future
+(defn start-consumer-thread! []
+  (if @consumer-thread
+    @consumer-thread
+    (reset! consumer-thread (future (doall (repeatedly consume-message))))))
+
+(defn stop-consumer-thread! []
+  (when @consumer-thread
+       (future-cancel @consumer-thread)
+       (reset! consumer-thread nil)))
+
+(defn consumer-thread-running? []
+  (if @consumer-thread
+    (not (future-cancelled? @consumer-thread))
+    false))
 
 (defn start-streaming! []
   (.connect (get-client))
-  (.start (Thread. #(doall (repeatedly consumer-messages)))))
+  (start-consumer-thread!))
 
 (defn stop-streaming! []
-  (.stop (get-client)))
+  (when @client
+    (.stop (get-client)))
+  (stop-consumer-thread!)
+  (reset! client nil)
+  (reset! queue nil))
 
-(defn reconnect! []
-  (.reconnect (get-client)))
-  (.reconnect (get-client))
+; (defn reconnect! []
+;   (.reconnect (get-client))
+;   (start-consumer-thread!))
