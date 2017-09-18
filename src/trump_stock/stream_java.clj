@@ -5,14 +5,15 @@
            (com.twitter.hbc.core.processor StringDelimitedProcessor)
            (com.twitter.hbc.core.endpoint StatusesFilterEndpoint)
            (com.twitter.hbc.httpclient.auth Authentication OAuth1))
-
-  (:require [cheshire.core :refer :all]))
+  (:require [cheshire.core :refer :all]
+            [trump-stock.sentiment :refer [analyze-entity-sentiment]]))
 
 (def auth (atom nil))
 (def endpoint (atom nil))
 (def queue (atom nil))
 (def client (atom nil))
 (def consumer-thread (atom nil)) ; future
+(def sentiment-results (atom nil))
 
 (def consumer-key "94bPomC4amy5zeYoBw9zL3q2K")
 (def consumer-secret "A9kR74FslUoEBQGzAPVprV9WnCyiXFu8tpKXdmVmdH76sWZDTI")
@@ -45,12 +46,30 @@
                        (.processor (StringDelimitedProcessor. (get-queue)))
                        (.build)))))
 
+; input twitter reults
+; output [[entity, score]]
+(defn process-twitter-results [m]
+  (->> m
+      :text
+      analyze-entity-sentiment
+      extract-entity-results
+      (reduce build-entity-score-tuples [])))
+
+; extract entities from analysis network response
+(defn extract-entity-results [m]
+  (-> m :body (parse-string true) :entities))
+
+; fn used for reducing entities to [[entity, score]]
+(defn build-entity-score-tuples [agg, cur]
+  (conj agg [(:name cur), (-> cur :sentiment :score)]))
+
 (defn consume-message []
   (if (not (.isDone (get-client)))
     (-> (get-queue)
         (.take)
-        (parse-string)
-        (println))))
+        (parse-string true)
+        (process-twitter-results))))
+
 
 ; get and start future
 (defn start-consumer-thread! []
@@ -60,8 +79,8 @@
 
 (defn stop-consumer-thread! []
   (when @consumer-thread
-       (future-cancel @consumer-thread)
-       (reset! consumer-thread nil)))
+    (future-cancel @consumer-thread)
+    (reset! consumer-thread nil)))
 
 (defn consumer-thread-running? []
   (if @consumer-thread
