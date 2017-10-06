@@ -25,16 +25,27 @@
   "URL encodes entity and then searches"
   (->> entity space-to-plus (str "https://www.google.com/search?q=stock+")))
 
-(defn find-stock-value [http-resp]
+(defn find-stock-price [http-resp]
   (->> http-resp
        :body
-       (re-find #"data-value=\"\d+\.?\d*") ;grabs data value segment
-       (re-find #"\d+\.?\d*") ;grabs just the number from the expression
+       (re-find #"data-value=\"\d+?\.?\d*") ;grabs data value segment
+       (re-find #"\d+?\.?\d*") ;grabs just the number from the expression
        Double/parseDouble))
+
+(defn find-ticker-name [http-resp]
+  "Currently ignoring LON and TYO exchanges to avoid currency conversion"
+  (->> http-resp
+       :body
+       (re-find #"(NASDAQ|NYSE):? \w+")
+       (re-find #"\w+$")))
+
+(defn find-ticker-and-price [http-resp]
+  {:ticker (find-ticker-name http-resp)
+   :price (find-stock-price http-resp)})
 
 (defn get-stock-ticker-and-cost [entity]
   "If entity is a public company, return that company's ticker and share value"
   (-> entity
       build-search-string
       (http/get default-chrome-headers)
-      find-stock-value))
+      find-ticker-and-price))

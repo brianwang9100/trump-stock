@@ -11,4 +11,6 @@
                  [com.twitter/hbc-core "2.2.0"]
                  [com.fzakaria/slf4j-timbre "0.3.7"]
                  [cheshire "5.8.0"]
-                 [proto-repl "0.3.1"]])
+                 [proto-repl "0.3.1"]
+                 [clj-time "0.14.0"]]
+  :main trump-stock.stream-java)

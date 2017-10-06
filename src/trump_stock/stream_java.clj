@@ -46,6 +46,14 @@
                        (.processor (StringDelimitedProcessor. (get-queue)))
                        (.build)))))
 
+; extract entities from analysis network response
+(defn extract-entity-results [m]
+  (-> m :body (parse-string true) :entities))
+
+; fn used for reducing entities to [[entity, score]]
+(defn build-entity-score-tuples [agg, cur]
+  (conj agg [(:name cur), (-> cur :sentiment :score)]))
+  
 ; input twitter reults
 ; output [[entity, score]]
 (defn process-twitter-results [m]
@@ -55,20 +63,14 @@
       extract-entity-results
       (reduce build-entity-score-tuples [])))
 
-; extract entities from analysis network response
-(defn extract-entity-results [m]
-  (-> m :body (parse-string true) :entities))
-
-; fn used for reducing entities to [[entity, score]]
-(defn build-entity-score-tuples [agg, cur]
-  (conj agg [(:name cur), (-> cur :sentiment :score)]))
 
 (defn consume-message []
   (if (not (.isDone (get-client)))
     (-> (get-queue)
         (.take)
         (parse-string true)
-        (process-twitter-results))))
+        (process-twitter-results)
+        (println))))
 
 
 ; get and start future
