@@ -20,22 +20,23 @@
 (defn now-and-then [days-later]
   (take 2 (p/periodic-seq (l/local-now) (t/days days-later))))
 
-(defn position [ticker shares start-date end-date buy-price sell-price]
-  {:ticker ticker
+(defn position [entity ticker shares start-date end-date buy-price sell-price]
+  {:entity entity
+   :ticker ticker
    :shares shares
    :start-date start-date
    :end-date end-date
    :buy-price buy-price
    :sell-price sell-price})
 
-(defn create-long-position [ticker price shares days]
+(defn create-long-position [entity ticker price shares days]
   (let [[start-date end-date] (now-and-then days)
-        new-position (position ticker shares start-date end-date price nil)]
+        new-position (position entity ticker shares start-date end-date price nil)]
     (swap! long-positions #(conj % new-position))))
 
-(defn create-short-position [ticker price shares days]
+(defn create-short-position [entity ticker price shares days]
   (let [[start-date end-date] (now-and-then days)
-        new-position (position ticker shares start-date end-date nil price)]
+        new-position (position entity ticker shares start-date end-date nil price)]
     (swap! short-positions #(conj short-positions new-position))))
 
 (defn is-finished? [position]
@@ -43,16 +44,26 @@
 
 ;; change position map to store the original entity name
 (defn finish-long-position [position]
-  (let [ticker (:ticker position)
-        {} (get-stock-ticker-and-cost ticker)]))
+  (let [entity (:entity position)
+        price (:price (get-ticker-and-price-for-entity entity))]
+    (assoc position :sell-price price)))
 
-(defn finish-short-position [position])
+(defn finish-short-position [position]
+  (let [entity (:entity position)
+        price (:price (get-ticker-and-price-for-entity entity))]
+    (assoc position :buy-price price)))
+
 (defn update-positions []
   (let [finished-longs (filter is-finished? long-positions)
         finished-shorts (filter is-finished? short-positions)
         updated-longs (map finish-long-position finished-longs)
         updated-shorts (map finish-short-position finished-shorts)]
-    (swap total .............................)
+    (swap! long-positions #(remove is-finished? %))
+    (swap! short-positions #(remove is-finished? %))
+    (swap! total #(->> (concat finished-longs finished-shorts)
+                      (map calculate-net)
+                      (reduce + 0)
+                      (+ %)))
     (swap! history #(-> % (conj updated-longs) (conj updated-shorts)))))
 
 (defn calculate-num-shares [price total percent]
@@ -62,14 +73,15 @@
     (catch Exception e
       (println (str "exception in calculate-num-shares: " (.getMessage e))))))
 
-(defn evaluate [ticker price sentiment]
+(defn purchase-shares [entity ticker price sentiment]
   "evaluates and creates positions from ticker price and sentiment. number of shares bought is 50%"
   (let [shares (calculate-num-shares price @total 0.5)]
+    (println (str "Purchasing " shares " shares for " entity ", " ticker ", " price ", " sentiment))
     (cond
-      (< sentiment -0.6) (create-short-position ticker price shares 3)
-      (< sentiment -0.1) (create-short-position ticker price shares 1)
-      (> sentiment 0.6) (create-long-position ticker price shares 3)
-      (> sentiment 0.1) (create-long-position ticker price shares 1))))
+      (< sentiment -0.6) (create-short-position entity ticker price shares 3)
+      (< sentiment -0.1) (create-short-position entity ticker price shares 1)
+      (> sentiment 0.6) (create-long-position entity ticker price shares 3)
+      (> sentiment 0.1) (create-long-position entity ticker price shares 1))))
 
 (defn print-history []
   (println history))

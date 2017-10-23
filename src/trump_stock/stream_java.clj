@@ -53,7 +53,7 @@
 ; fn used for reducing entities to [[entity, score]]
 (defn build-entity-score-tuples [agg, cur]
   (conj agg [(:name cur), (-> cur :sentiment :score)]))
-  
+
 ; input twitter reults
 ; output [[entity, score]]
 (defn process-twitter-results [m]
@@ -63,15 +63,16 @@
       extract-entity-results
       (reduce build-entity-score-tuples [])))
 
+(defn purchase-shares-for-entity-score-tuple [[entity sentiment]]
+  (let [{:ticker ticker :price price} (get-ticker-and-price-for-entity entity)]
+    (println (str entity ", " ticker ", " price ", " sentiment))
+    (purchase-shares entity ticker price sentiment)))
 
 (defn consume-message []
   (if (not (.isDone (get-client)))
-    (-> (get-queue)
-        (.take)
-        (parse-string true)
-        (process-twitter-results)
-        (println))))
-
+    (let [twitter-results (-> (get-queue) (.take) (parse-string true))
+          entity-score-tuples (process-twitter-results)]
+      (map purchase-shares-for-entity-score-tuple entity-score-tuples))))
 
 ; get and start future
 (defn start-consumer-thread! []

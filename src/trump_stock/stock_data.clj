@@ -43,7 +43,7 @@
   {:ticker (find-ticker-name http-resp)
    :price (find-stock-price http-resp)})
 
-(defn get-stock-ticker-and-cost [entity]
+(defn get-ticker-and-price-for-entity [entity]
   "If entity is a public company, return that company's ticker and share value"
   (-> entity
       build-search-string
