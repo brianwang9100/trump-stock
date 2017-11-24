@@ -37,6 +37,7 @@
   (->> http-resp
        :body
        (re-find #"(NASDAQ|NYSE):? \w+")
+       (first)
        (re-find #"\w+$")))
 
 (defn find-ticker-and-price [http-resp]

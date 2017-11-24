@@ -18,3 +18,13 @@
   ;   ;                                :shares (/ 500000 900)
   ;   ;                                :start-date})))
   ; (testing "with long position"))
+
+
+(purchase-shares "Google" "GOOG" 1100 -0.5)
+(def p (assoc (first @short-positions) :end-date (l/local-now)))
+(reset! short-positions [p])
+(is-finished? (first @short-positions))
+(update-positions)
+
+
+(def finished-longs (vec (filter is-finished? @long-positions)))

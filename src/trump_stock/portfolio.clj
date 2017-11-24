@@ -32,50 +32,69 @@
   "buys shares, and updates total (should be net loss)"
   (let [[start-date end-date] (now-and-then days)
         new-position (position entity ticker shares start-date end-date price nil)]
-    (swap! long-positions #(conj % new-position))
-    (update-total (* price shares -1))))
+    (update-total (* price shares -1))
+    (swap! long-positions #(conj % new-position))))
 
 (defn create-short-position [entity ticker price shares days]
   "sells borrowed shares, and updates total (should be net gain)"
   (let [[start-date end-date] (now-and-then days)
         new-position (position entity ticker shares start-date end-date nil price)]
-    (swap! short-positions #(conj short-positions new-position))
-    (update-total (* price shares))))
+    (update-total (* price shares))
+    (swap! short-positions #(conj % new-position))))
 
 (defn is-finished? [position]
   (t/before? (:end-date position) (l/local-now)))
 
-;; change position map to store the original entity name
 (defn finish-long-position [position]
   (let [entity (:entity position)
         shares (:shares position)
         price (:price (get-ticker-and-price-for-entity entity))]
-    (assoc position :sell-price price)
-    (update-total (* price shares))))
+    (update-total (* price shares))
+    (assoc position :sell-price price)))
+
+(defn finish-long-position-debug [position]
+  (let [entity (:entity position)
+        shares (:shares position)
+        price (:price (get-ticker-and-price-for-entity entity))]
+    (println entity)
+    (println shares)
+    (println price)))
+    ; (update-total (* price shares))
+    ; (assoc position :sell-price price)))
 
 (defn finish-short-position [position]
   (let [entity (:entity position)
         shares (:shares position)
         price (:price (get-ticker-and-price-for-entity entity))]
-    (assoc position :buy-price price)
-    (update-total (* price shares -1))))
+    (update-total (* price shares -1))
+    (assoc position :buy-price price)))
+
+(defn finish-short-position-debug [position]
+  (let [entity (:entity position)
+        shares (:shares position)
+        price (:price (get-ticker-and-price-for-entity entity))]
+    (println entity)
+    (println shares)
+    (println price)))
+    ;(update-total (* price shares -1))
+    ;(assoc position :buy-price price)))
 
 (defn calculate-net [{:keys [buy-price sell-price]} position]
   (- sell-price buy-price))
 
 (defn update-positions []
-  (let [finished-longs (filter is-finished? long-positions)
-        finished-shorts (filter is-finished? short-positions)
+  (let [finished-longs (vec (filter is-finished? @long-positions))
+        finished-shorts (vec (filter is-finished? @short-positions))
         updated-longs (map finish-long-position finished-longs)
         updated-shorts (map finish-short-position finished-shorts)]
     (swap! long-positions #(remove is-finished? %))
     (swap! short-positions #(remove is-finished? %))
-    (swap! history #(-> % (conj updated-longs) (conj updated-shorts)))))
+    (swap! history #(concat % updated-longs updated-shorts))))
 
 (defn calculate-num-shares [price total percent]
   "calculates number of shares to buy from percentage of total"
   (try
-    (/ (* total percent) price)
+    (int (Math/floor (/ (* total percent) price)))
     (catch Exception e
       (println (str "exception in calculate-num-shares: " (.getMessage e))))))
 
