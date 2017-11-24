@@ -13,4 +13,8 @@
                  [cheshire "5.8.0"]
                  [proto-repl "0.3.1"]
                  [clj-time "0.14.0"]]
-  :main trump-stock.stream-java)
+  :min-lein-version "2.0.0"
+  :plugins [[environ/environ.lein "0.3.1"]]
+  :hooks [environ.leiningen.hooks]
+  :uberjar-name "trump-stock-standalone.jar"
+  :profiles {:production {:env {:production true}}})

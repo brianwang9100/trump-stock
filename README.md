@@ -1,10 +1,11 @@
 # trump-stock
 
-A Clojure library designed to ... well, that part is up to you.
+Play the stock market using trump's tweets
 
 ## Usage
 
-FIXME
+- Should be streaming on a heroku instance
+- When we move to track many celebrities and social media influencers, use twitterhandles.json (many of the most popular twitter users)
 
 ## License
 

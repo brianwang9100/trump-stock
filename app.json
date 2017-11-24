@@ -1,0 +1,6 @@
+{
+  "name": "Trump Stock Project",
+  "description": "Use trump's tweets to play the stock market",
+  "image": "heroku/clojure",
+  "addons": [ "heroku-postgresql" ]
+}
