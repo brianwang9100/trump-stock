@@ -6,7 +6,10 @@
            (com.twitter.hbc.core.endpoint StatusesFilterEndpoint)
            (com.twitter.hbc.httpclient.auth Authentication OAuth1))
   (:require [cheshire.core :refer :all]
-            [trump-stock.sentiment :refer [analyze-entity-sentiment]]))
+            [trump-stock.sentiment :refer [analyze-entity-sentiment]]
+            [trump-stock.stock-data :refer [get-ticker-and-price-for-entity]]
+            [trump-stock.portfolio :refer [purchase-shares]]))
+
 
 (def auth (atom nil))
 (def endpoint (atom nil))
@@ -64,8 +67,7 @@
       (reduce build-entity-score-tuples [])))
 
 (defn purchase-shares-for-entity-score-tuple [[entity sentiment]]
-  (let [{:ticker ticker :price price} (get-ticker-and-price-for-entity entity)]
-    (println (str entity ", " ticker ", " price ", " sentiment))
+  (let [{ticker :ticker price :price} (get-ticker-and-price-for-entity entity)]
     (purchase-shares entity ticker price sentiment)))
 
 (defn consume-message []

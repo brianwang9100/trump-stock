@@ -2,15 +2,11 @@
 
   (:require [clj-time.core :as t]
             [clj-time.periodic :as p]
-            [clj-time.local :as l]))
+            [clj-time.local :as l]
+            [trump-stock.stock-data :refer [get-ticker-and-price-for-entity]]))
   ; (:require [crypto.random])
   ; (:require [oauth.client :as oauth])
   ; (:require [clj-http.client :as http]))
-
-;; TODO:
-;; 1. ensure we are getting correct stock with entity instead of ticker
-;; 2. complete finish long + short positions
-;; 3. write fn to update total money amt
 
 (def total (atom 1000000))
 (def short-positions (atom []))
@@ -29,15 +25,22 @@
    :buy-price buy-price
    :sell-price sell-price})
 
+(defn update-total [amount]
+  (swap! total #(+ % amount)))
+
 (defn create-long-position [entity ticker price shares days]
+  "buys shares, and updates total (should be net loss)"
   (let [[start-date end-date] (now-and-then days)
         new-position (position entity ticker shares start-date end-date price nil)]
-    (swap! long-positions #(conj % new-position))))
+    (swap! long-positions #(conj % new-position))
+    (update-total (* price shares -1))))
 
 (defn create-short-position [entity ticker price shares days]
+  "sells borrowed shares, and updates total (should be net gain)"
   (let [[start-date end-date] (now-and-then days)
         new-position (position entity ticker shares start-date end-date nil price)]
-    (swap! short-positions #(conj short-positions new-position))))
+    (swap! short-positions #(conj short-positions new-position))
+    (update-total (* price shares))))
 
 (defn is-finished? [position]
   (t/before? (:end-date position) (l/local-now)))
@@ -45,13 +48,20 @@
 ;; change position map to store the original entity name
 (defn finish-long-position [position]
   (let [entity (:entity position)
+        shares (:shares position)
         price (:price (get-ticker-and-price-for-entity entity))]
-    (assoc position :sell-price price)))
+    (assoc position :sell-price price)
+    (update-total (* price shares))))
 
 (defn finish-short-position [position]
   (let [entity (:entity position)
+        shares (:shares position)
         price (:price (get-ticker-and-price-for-entity entity))]
-    (assoc position :buy-price price)))
+    (assoc position :buy-price price)
+    (update-total (* price shares -1))))
+
+(defn calculate-net [{:keys [buy-price sell-price]} position]
+  (- sell-price buy-price))
 
 (defn update-positions []
   (let [finished-longs (filter is-finished? long-positions)
@@ -60,10 +70,6 @@
         updated-shorts (map finish-short-position finished-shorts)]
     (swap! long-positions #(remove is-finished? %))
     (swap! short-positions #(remove is-finished? %))
-    (swap! total #(->> (concat finished-longs finished-shorts)
-                      (map calculate-net)
-                      (reduce + 0)
-                      (+ %)))
     (swap! history #(-> % (conj updated-longs) (conj updated-shorts)))))
 
 (defn calculate-num-shares [price total percent]
