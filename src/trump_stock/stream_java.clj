@@ -8,7 +8,7 @@
   (:require [cheshire.core :refer :all]
             [trump-stock.sentiment :refer [analyze-entity-sentiment]]
             [trump-stock.stock-data :refer [get-ticker-and-price-for-entity]]
-            [trump-stock.portfolio :refer [purchase-shares]]))
+            [trump-stock.portfolio :refer [purchase-shares update-positions]]))
 
 
 (def auth (atom nil))
@@ -22,6 +22,7 @@
 (def consumer-secret "A9kR74FslUoEBQGzAPVprV9WnCyiXFu8tpKXdmVmdH76sWZDTI")
 (def access-token "2680914770-OGO02YNrktlgxzHNjQ0dhpDuKqt33avvBtP9JKQ")
 (def access-secret "HrrwcQoQHmkhN51b7dtFOK4IR6nl8H4psoPLHWb5fj3oT")
+(def twitter-ids [2680914770])
 
 (defn get-auth []
   (if @auth
@@ -32,7 +33,7 @@
   (if @endpoint
     @endpoint
     (reset! endpoint (-> (StatusesFilterEndpoint.)
-                         (.followings (java.util.ArrayList. [2680914770]))))))
+                         (.followings (java.util.ArrayList. twitter-ids))))))
 
 (defn get-queue []
   (if @queue
@@ -72,8 +73,11 @@
 
 (defn consume-message []
   (if (not (.isDone (get-client)))
+    (update-positions)
     (let [twitter-results (-> (get-queue) (.take) (parse-string true))
-          entity-score-tuples (process-twitter-results)]
+          entity-score-tuples (process-twitter-results twitter-results)]
+      (println "Consuming Message, generating entity-score-tuples")
+      (println entity-score-tuples)
       (map purchase-shares-for-entity-score-tuple entity-score-tuples))))
 
 ; get and start future

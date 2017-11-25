@@ -14,9 +14,11 @@
 (def history (atom []))
 
 (defn now-and-then [days-later]
+  "creates tuple of datetime objects, one for now and one days-later"
   (take 2 (p/periodic-seq (l/local-now) (t/days days-later))))
 
 (defn position [entity ticker shares start-date end-date buy-price sell-price]
+  "creates position"
   {:entity entity
    :ticker ticker
    :shares shares
@@ -26,63 +28,62 @@
    :sell-price sell-price})
 
 (defn update-total [amount]
+  "updates total with amount, total += amount"
   (swap! total #(+ % amount)))
+
+(defn calculate-net [position]
+  "given a position, determines net gain or loss from position"
+  (let [{:keys [buy-price sell-price shares]} position]
+    (* (- sell-price buy-price) shares)))
+
+(defn is-finished? [position]
+  "checks whether position is finished"
+  (t/before? (:end-date position) (l/local-now)))
 
 (defn create-long-position [entity ticker price shares days]
   "buys shares, and updates total (should be net loss)"
   (let [[start-date end-date] (now-and-then days)
-        new-position (position entity ticker shares start-date end-date price nil)]
+        new-position (position entity ticker shares start-date end-date price nil)
+        previous-total @total]
     (update-total (* price shares -1))
+    (println (str "Created long position for " ticker ", bought " shares " shares at $" price ". Previous total: $" previous-total ", Current total: $" @total))
     (swap! long-positions #(conj % new-position))))
 
 (defn create-short-position [entity ticker price shares days]
   "sells borrowed shares, and updates total (should be net gain)"
   (let [[start-date end-date] (now-and-then days)
-        new-position (position entity ticker shares start-date end-date nil price)]
+        new-position (position entity ticker shares start-date end-date nil price)
+        previous-total @total]
     (update-total (* price shares))
+    (println (str "Created short position for " ticker ", sold " shares " shares at $" price ". Previous total: $" previous-total ", Current total: $" @total))
     (swap! short-positions #(conj % new-position))))
 
-(defn is-finished? [position]
-  (t/before? (:end-date position) (l/local-now)))
-
 (defn finish-long-position [position]
+  "updates total and returns updated long position with new price"
   (let [entity (:entity position)
+        ticker (:ticker position)
         shares (:shares position)
-        price (:price (get-ticker-and-price-for-entity entity))]
+        price (:price (get-ticker-and-price-for-entity entity))
+        previous-total @total
+        updated-position (assoc position :sell-price price)]
     (update-total (* price shares))
-    (assoc position :sell-price price)))
-
-(defn finish-long-position-debug [position]
-  (let [entity (:entity position)
-        shares (:shares position)
-        price (:price (get-ticker-and-price-for-entity entity))]
-    (println entity)
-    (println shares)
-    (println price)))
-    ; (update-total (* price shares))
-    ; (assoc position :sell-price price)))
+    (println (str "Finished long position for " ticker ", sold " shares " shares at $" price ". Previous total: $" previous-total ", Current total: $" @total ", Net gain: $" (calculate-net updated-position)))
+    updated-position))
 
 (defn finish-short-position [position]
+  "updates total and returns updated short position with new price"
   (let [entity (:entity position)
+        ticker (:ticker position)
         shares (:shares position)
-        price (:price (get-ticker-and-price-for-entity entity))]
+        price (:price (get-ticker-and-price-for-entity entity))
+        previous-total @total
+        updated-position (assoc position :buy-price price)]
     (update-total (* price shares -1))
-    (assoc position :buy-price price)))
-
-(defn finish-short-position-debug [position]
-  (let [entity (:entity position)
-        shares (:shares position)
-        price (:price (get-ticker-and-price-for-entity entity))]
-    (println entity)
-    (println shares)
-    (println price)))
-    ;(update-total (* price shares -1))
-    ;(assoc position :buy-price price)))
-
-(defn calculate-net [{:keys [buy-price sell-price]} position]
-  (- sell-price buy-price))
+    (println (str "Finished short position for " ticker ", bought " shares " shares at $" price ". Previous total: $" previous-total ", Current total: $" @total ", Net gain: $" (calculate-net updated-position)))
+    updated-position))
 
 (defn update-positions []
+  "checks all current positions and finishes them"
   (let [finished-longs (vec (filter is-finished? @long-positions))
         finished-shorts (vec (filter is-finished? @short-positions))
         updated-longs (map finish-long-position finished-longs)
@@ -101,7 +102,6 @@
 (defn purchase-shares [entity ticker price sentiment]
   "evaluates and creates positions from ticker price and sentiment. number of shares bought is 50%"
   (let [shares (calculate-num-shares price @total 0.5)]
-    (println (str "Purchasing " shares " shares for " entity ", " ticker ", " price ", " sentiment))
     (cond
       (< sentiment -0.6) (create-short-position entity ticker price shares 3)
       (< sentiment -0.1) (create-short-position entity ticker price shares 1)
@@ -110,6 +110,10 @@
 
 (defn print-history []
   (println history))
+
+
+
+; Background thread
 
 ; [{
 ;    ticker-name: "NSYE"

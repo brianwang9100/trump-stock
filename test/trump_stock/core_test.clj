@@ -27,4 +27,9 @@
 (update-positions)
 
 
+(purchase-shares "Twitter" "TWTR" 15 0.9)
+(def p (assoc (first @long-positions) :end-date (l/local-now)))
+(reset! long-positions [p])
+(is-finished? (first @long-positions))
+
 (def finished-longs (vec (filter is-finished? @long-positions)))
