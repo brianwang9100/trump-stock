@@ -21,8 +21,10 @@
 
 (defn -main [& [port]]
   (let [port (Integer. (or port (env :port) 5000))]
-    (start-streaming!)
-    (jetty/run-jetty (site #'app) {:port port :join? false})))
+    (println "Starting Webserver...")
+    (jetty/run-jetty (site #'app) {:port port :join? false})
+    (println "Starting Twitter-Buying EventLoop...")
+    (start-streaming!)))
 
 ;; For interactive development:
 ;; (.stop server)
